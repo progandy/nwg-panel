@@ -183,14 +183,14 @@ def instantiate_content(panel, container, content_list, icons_path=""):
             else:
                 print("'scratchpad' ignored", file=sys.stderr)
 
-        if "button-" in item:
+        if item.startswith("button-"):
             if item in panel:
                 button = CustomButton(panel[item], icons_path)
                 container.pack_start(button, False, False, panel["items-padding"])
             else:
                 print("'{}' not defined in this panel instance".format(item))
 
-        if "executor-" in item:
+        if item.startswith("executor-"):
             if item in panel:
                 executor = Executor(panel[item], icons_path)
                 container.pack_start(executor, False, False, panel["items-padding"])
@@ -238,6 +238,24 @@ def instantiate_content(panel, container, content_list, icons_path=""):
             common.tray_list.append(tray)
             container.pack_start(tray, False, False, panel["items-padding"])
 
+        if item.startswith("module_"):
+            plugin = load_plugin(item.split("-",1)[0])
+            widget = None
+            if item in panel:
+                widget = plugin.create_widget(panel[item], icons_path)
+            else:
+                widget = plugin.create_widget({}, icons_path)
+            container.pack_start(widget, False, False, panel["items-padding"])
+
+
+import importlib
+def load_plugin(name):
+    if name in common.pluginmodules:
+        return common.pluginmodules[name]
+    else:
+        mod = importlib.import_module(name)
+        common.pluginmodules[name] = mod
+        return mod
 
 def main():
     parser = argparse.ArgumentParser()
@@ -310,6 +328,7 @@ def main():
     save_string(str(own_pid), pid_file)
 
     common.config_dir = get_config_dir()
+    sys.path.insert(1, os.path.join(common.config_dir, "modules"))
     cache_dir = get_cache_dir()
     if cache_dir:
         common.dwl_data_file = os.path.join(cache_dir, "nwg-dwl-data")
